@@ -62,4 +62,73 @@
             osc.type = 'square'; // 투박한 기계음
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime +
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        }
+
+        // --- 이미지 및 필터 시스템 ---
+        const texture = PIXI.Texture.from('1.png');
+        texture.baseTexture.on('loaded', () => {
+            const sprite = new PIXI.Sprite(texture);
+            sprite.anchor.set(0.5);
+            app.stage.addChild(sprite);
+
+            const blurFilter = new PIXI.filters.BlurFilter();
+            const noiseFilter = new PIXI.filters.NoiseFilter();
+            sprite.filters = [blurFilter, noiseFilter];
+
+            let lastX = window.innerWidth / 2, lastY = window.innerHeight / 2;
+            let speed = 0;
+
+            const handleMove = (x, y) => {
+                speed = Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
+                lastX = x; lastY = y;
+            };
+
+            window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+            window.addEventListener('touchmove', (e) => handleMove(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
+
+            app.ticker.add(() => {
+                sprite.x = app.screen.width / 2;
+                sprite.y = app.screen.height / 2;
+                const margin = window.innerWidth < 768 ? 0.8 : 0.65;
+                const scale = Math.min((app.screen.width * margin) / texture.width, (app.screen.height * margin) / texture.height);
+                sprite.scale.set(scale);
+
+                blurFilter.blur = Math.min(speed * 0.3, 12);
+                noiseFilter.noise = Math.min(speed * 0.008, 0.4);
+                noiseFilter.seed = Math.random();
+                speed *= 0.85;
+            });
+        });
+
+        // --- 셔플 로직 ---
+        function startSlotMachine(elementId, delay) {
+            const element = document.getElementById(elementId);
+            const currentGroup = groups[elementId];
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            setTimeout(() => {
+                let iter = 0;
+                const interval = setInterval(() => {
+                    element.innerText = Array(6).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join("");
+                    playBeep(100 + (iter * 3), 0.02); // 투박한 뚜뚜 소리
+                    if (++iter >= 15) {
+                        clearInterval(interval);
+                        element.innerText = `${currentGroup[Math.floor(Math.random() * currentGroup.length)]} : ${currentGroup[Math.floor(Math.random() * currentGroup.length)]}`;
+                        playBeep(200, 0.1); // 확정음
+                    }
+                }, 40);
+            }, delay);
+        }
+
+        const triggerAll = () => Object.keys(groups).forEach((id, i) => startSlotMachine(id, i * 150));
+        setInterval(triggerAll, 5000);
+        
+        window.addEventListener('mousedown', () => audioCtx.resume(), {once: true});
+        window.addEventListener('touchstart', () => audioCtx.resume(), {once: true});
+        
+        triggerAll();
+    </script>
+</body>
+</html>
