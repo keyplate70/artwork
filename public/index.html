@@ -28,12 +28,19 @@
         const RESET_INTERVAL = 5000; 
         const SHUFFLE_SPEED = 35;
 
-        const groups = {
-            "word-1": ["MEMORY", "TRACE", "VOID", "SIGNAL"], 
-            "word-2": ["FRAGMENT", "MOTION", "FLOW", "CORE"], 
-            "word-3": ["DIMENSION", "SYNC", "DATA", "OBJECT"], 
-            "word-4": ["SOURCE", "HYBRID", "CONNECT", "SPACE"]
-        };
+     const groups = {
+    // Group 1: 시스템의 근원과 중심
+    "word-1": ["KEY", "CORE", "AXIS", "ORIGIN", "PRIME", "ROOT", "BASE", "INDEX", "SOURCE", "DATUM", "THRESHOLD", "PIVOT", "ANCHOR"], 
+    
+    // Group 2: 구조와 표면
+    "word-2": ["PLATE", "SHEET", "FIELD", "SURFACE", "LAYER", "GRID", "PLANE", "MATRIX", "PANEL", "SLAB", "SUBSTRATE", "BED", "FACET"], 
+    
+    // Group 3: 흔적과 공정
+    "word-3": ["PRINT", "PRESS", "IMPRINT", "ETCH", "STAMP", "CAST", "TRACE", "MARK", "ENGRAVE", "OFFSET", "EXPOSE"], 
+    
+    // Group 4: 변동과 수치 (1970년대 디지털 감성 포함)
+    "word-4": ["NOISE", "GRAIN", "SHIFT", "BIAS", "DELTA", "VARIANCE", "ERROR", "DRIFT", "BLUR", "STATIC", "JITTER", "70", "071", "700", "7", "1970"]
+};
 
         const app = new PIXI.Application({ 
             backgroundColor: 0x121212, resizeTo: window, antialias: true,
