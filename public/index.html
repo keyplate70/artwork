@@ -3,13 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Art - Stable</title>
+    <title>Interactive Art - Words Combination</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; 
             background-color: #121212; 
             display: flex; justify-content: center; align-items: center; height: 100vh;
+            font-family: 'Pretendard', sans-serif; /* 폰트는 취향에 맞게 변경 가능 */
+        }
+        /* 단어들이 표시될 레이어 설정 */
+        .word-layer {
+            position: fixed; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+            color: rgba(255, 255, 255, 0.4); /* 글자색 및 투명도 */
+            font-size: 14px; letter-spacing: 2px;
+        }
+        .word-item {
+            position: absolute; transition: opacity 1s ease-in-out; opacity: 0;
         }
         .grain {
             position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
@@ -25,16 +36,41 @@
 </head>
 <body>
     <div class="grain"></div>
+    <div class="word-layer">
+        <div id="word-1" class="word-item" style="top: 10%; left: 10%;"></div>
+        <div id="word-2" class="word-item" style="top: 10%; right: 10%;"></div>
+        <div id="word-3" class="word-item" style="bottom: 10%; left: 10%;"></div>
+        <div id="word-4" class="word-item" style="bottom: 10%; right: 10%;"></div>
+    </div>
     <div id="art-container"></div>
 
     <script>
+        // 1. 단어 조합 시스템
+        const words = ["현상", "기억", "흐름", "조각", "공간", "시선", "순간", "진동", "무의식", "연결"];
+        
+        function updateWords() {
+            for (let i = 1; i <= 4; i++) {
+                const element = document.getElementById(`word-${i}`);
+                element.style.opacity = 0; // 페이드 아웃
+                
+                setTimeout(() => {
+                    const randomWord1 = words[Math.floor(Math.random() * words.length)];
+                    const randomWord2 = words[Math.floor(Math.random() * words.length)];
+                    element.innerText = `${randomWord1} / ${randomWord2}`;
+                    element.style.opacity = 1; // 페이드 인
+                }, 1000);
+            }
+        }
+        setInterval(updateWords, 4000); // 4초마다 단어 교체
+        updateWords();
+
+        // 2. PIXI 아트워크 설정 (기존 안정화 코드 유지)
         const app = new PIXI.Application({ 
             width: window.innerWidth, height: window.innerHeight, 
             backgroundColor: 0x121212, resizeTo: window, antialias: true 
         });
         document.getElementById('art-container').appendChild(app.view);
 
-        // 이미지 파일 이름을 1.png로 설정했습니다.
         const sprite = PIXI.Sprite.from('1.png');
         sprite.anchor.set(0.5);
         app.stage.addChild(sprite);
@@ -42,121 +78,22 @@
         function resize() {
             sprite.x = app.screen.width / 2;
             sprite.y = app.screen.height / 2;
-
-            // 화면 대비 80% 크기로 안정적으로 배치
-            const scale = Math.min(
-                (app.screen.width * 0.8) / sprite.texture.width, 
-                (app.screen.height * 0.8) / sprite.texture.height
-            );
+            const scale = Math.min((app.screen.width * 0.7) / sprite.texture.width, (app.screen.height * 0.7) / sprite.texture.height);
             sprite.scale.set(scale);
         }
 
         sprite.texture.baseTexture.on('loaded', resize);
         window.addEventListener('resize', resize);
 
-        // 왜곡 효과 설정
         const displacementSprite = PIXI.Sprite.from('https://res.cloudinary.com/dv9vxf7qn/image/upload/v1676641571/displacement_map_repeat_v8q7ig.jpg');
         displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
         const displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite);
         app.stage.addChild(displacementSprite);
         sprite.filters = [displacementFilter];
 
-        // 분모 숫자를 40으로 키워 움직임을 매우 부드럽고 작게 만들었습니다.
         window.addEventListener('mousemove', (e) => {
-            displacementFilter.scale.x = (e.clientX - app.screen.width / 2) / 40;
-            displacementFilter.scale.y = (e.clientY - app.screen.height / 2) / 40;
-        });
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Art - Centralized</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
-    <style>
-        /* 배경색을 #121212로 고정하고 여백을 없앱니다 */
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            background-color: #121212; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        canvas {
-            display: block;
-        }
-        .grain {
-            position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-            background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Resolution_Noise.png');
-            opacity: 0.06; pointer-events: none; z-index: 100;
-            animation: noise 0.2s infinite;
-        }
-        @keyframes noise {
-            0% { transform: translate(0,0); }
-            10% { transform: translate(-5%,-5%); }
-            50% { transform: translate(-10%,5%); }
-            100% { transform: translate(5%,0); }
-        }
-    </style>
-</head>
-<body>
-    <div class="grain"></div>
-    <div id="art-container"></div>
-
-    <script>
-        // 1. 캔버스 생성 (배경색 #121212 반영 및 해상도 대응)
-        const app = new PIXI.Application({ 
-            width: window.innerWidth, 
-            height: window.innerHeight, 
-            backgroundColor: 0x121212, 
-            resizeTo: window,
-            antialias: true
-        });
-        document.getElementById('art-container').appendChild(app.view);
-
-        // 2. 이미지 로드 (원하는 이미지 주소로 교체 가능)
-        const sprite = PIXI.Sprite.from('1.png');
-        sprite.anchor.set(0.5);
-        app.stage.addChild(sprite);
-
-        // 3. 해상도에 맞춰 이미지를 중앙에 배치하고 크기를 조절하는 함수
-        function resize() {
-            sprite.x = app.screen.width / 2;
-            sprite.y = app.screen.height / 2;
-
-            // 화면 비례에 맞춰 이미지가 꽉 차도록 계산 (CSS의 background-size: cover와 동일)
-            const screenRatio = app.screen.width / app.screen.height;
-            const imageRatio = sprite.texture.width / sprite.texture.height;
-
-            if (screenRatio > imageRatio) {
-                sprite.width = app.screen.width;
-                sprite.scale.y = sprite.scale.x;
-            } else {
-                sprite.height = app.screen.height;
-                sprite.scale.x = sprite.scale.y;
-            }
-        }
-
-        // 이미지 로딩 완료 시 실행
-        sprite.texture.baseTexture.on('loaded', resize);
-        // 창 크기가 바뀔 때마다 실행
-        window.addEventListener('resize', resize);
-
-        // 4. 마우스 일렁임 효과 (Displacement Map)
-        const displacementSprite = PIXI.Sprite.from('1.ㅔㅜㅎ');
-        displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-        const displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite);
-        app.stage.addChild(displacementSprite);
-        sprite.filters = [displacementFilter];
-
-        window.addEventListener('mousemove', (e) => {
-            displacementFilter.scale.x = (e.clientX - app.screen.width / 2) / 10;
-            displacementFilter.scale.y = (e.clientY - app.screen.height / 2) / 10;
+            displacementFilter.scale.x = (e.clientX - app.screen.width / 2) / 45;
+            displacementFilter.scale.y = (e.clientY - app.screen.height / 2) / 45;
         });
     </script>
 </body>
