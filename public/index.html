@@ -53,19 +53,88 @@
         });
         artSection.appendChild(app.view);
 
-        // --- 오디오 시스템 ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeep(freq, dur) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square'; // 투박한 기계음
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + dur);
-        }
+        // --- 로우파이 배경 오디오 시스템 ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let isAudioStarted = false;
+
+// 1. 지속적인 배경 웅웅거림 (Drone Hum)
+function startBackgroundHum() {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    const lowPassFilter = audioCtx.createBiquadFilter();
+
+    oscillator.type = 'sawtooth'; // 톱니파를 사용하여 거친 느낌 부여
+    oscillator.frequency.setValueAtTime(55, audioCtx.currentTime); // 아주 낮은 베이스음 (A1)
+
+    lowPassFilter.type = 'lowpass';
+    lowPassFilter.frequency.setValueAtTime(150, audioCtx.currentTime); // 저음만 남기고 깎음
+
+    gainNode.gain.setValueAtTime(0.015, audioCtx.currentTime); // 매우 작게 설정 (배경음)
+
+    oscillator.connect(lowPassFilter);
+    lowPassFilter.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+}
+
+// 2. 지지직거리는 화이트 노이즈 (Static Noise)
+function startStaticNoise() {
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+    }
+
+    const whiteNoise = audioCtx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const noiseGain = audioCtx.createGain();
+    const noiseFilter = audioCtx.createBiquadFilter();
+
+    noiseFilter.type = 'bandpass'; // 특정 주파수 대역만 남겨서 투박하게 만듦
+    noiseFilter.frequency.setValueAtTime(800, audioCtx.currentTime);
+    noiseFilter.Q.setValueAtTime(0.5, audioCtx.currentTime);
+
+    noiseGain.gain.setValueAtTime(0.008, audioCtx.currentTime); // 아주 미세하게 깔림
+
+    whiteNoise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+
+    whiteNoise.start();
+}
+
+// 기존 짧은 비프음 (뚜뚜) 함수는 유지
+function playBeep(freq, dur) {
+    if (audioCtx.state === 'suspended') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+// 통합 실행 함수 (첫 클릭 시 실행)
+function initLoFiAudio() {
+    if (isAudioStarted) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    startBackgroundHum();   // 베이스 웅웅거림 시작
+    startStaticNoise();    // 지지직 소리 시작
+    isAudioStarted = true;
+    console.log("Lo-Fi Background Audio Started");
+}
+
+// 이벤트 리스너 등록
+window.addEventListener('mousedown', initLoFiAudio, {once: true});
+window.addEventListener('touchstart', initLoFiAudio, {once: true});
 
         // --- 이미지 및 필터 시스템 ---
         const texture = PIXI.Texture.from('1.png');
