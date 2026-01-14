@@ -3,14 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K70 Core Stage</title>
+    <title>K70 Core Stage - No Intro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
     <style>
+        /* 진입 화면(Intro) 관련 스타일을 모두 삭제했습니다 */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; height: 100vh; font-family: 'Arial Black', 'Impact', sans-serif; touch-action: none; color: #F7F8F6; }
+        
         #art-section { position: absolute; inset: 0; z-index: 5; }
-        #ui-layer { position: absolute; inset: 0; z-index: 30; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding: 5vw; }
-        .word-item { font-size: 14px; font-weight: 900; letter-spacing: 0.2em; border-left: 3px solid rgba(247, 248, 246, 0.4); padding: 8px 15px; margin-bottom: 15px; background: rgba(247, 248, 246, 0.03); width: fit-content; font-family: 'Courier New', monospace; }
-        .grain { position: fixed; inset: -50%; width: 200%; height: 200%; background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Resolution_Noise.png'); opacity: 0.06; pointer-events: none; z-index: 100; animation: noise 0.2s infinite; }
+        
+        #ui-layer { 
+            position: absolute; inset: 0; z-index: 30; pointer-events: none; 
+            display: flex; flex-direction: column; justify-content: center; padding: 5vw; 
+        }
+
+        .word-item { 
+            font-size: 14px; font-weight: 900; letter-spacing: 0.2em; 
+            border-left: 3px solid rgba(247, 248, 246, 0.4); padding: 8px 15px; margin-bottom: 15px; 
+            background: rgba(247, 248, 246, 0.03); width: fit-content; font-family: 'Courier New', monospace; 
+        }
+
+        .grain { 
+            position: fixed; inset: -50%; width: 200%; height: 200%; 
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Resolution_Noise.png'); 
+            opacity: 0.06; pointer-events: none; z-index: 100; animation: noise 0.2s infinite; 
+        }
         @keyframes noise { 0% { transform: translate(0,0); } 100% { transform: translate(2%,1%); } }
     </style>
 </head>
@@ -18,7 +34,7 @@
     <div class="grain"></div>
     <div id="art-section"></div>
     <div id="ui-layer">
-        <div id="word-1" class="word-item">K70_SYSTEM_ON</div>
+        <div id="word-1" class="word-item">K70_SYSTEM_ACTIVE</div>
         <div id="word-2" class="word-item">CORE_DATAFEED</div>
         <div id="word-3" class="word-item">GRID_STABILIZED</div>
         <div id="word-4" class="word-item">VERSION_1970_071</div>
@@ -32,11 +48,12 @@
             "word-4": ["NOISE","DELTA","JITTER","0070","1970"]
         };
 
-        let speed = 120;
+        // 즉시 시작되도록 설정
+        let speed = 150; 
         let lastX = window.innerWidth / 2, lastY = window.innerHeight / 2;
         let audioCtx, audioInitialized = false;
 
-        // --- 오디오 활성화 (첫 상호작용 시) ---
+        // 사운드는 보안 정책상 첫 터치/클릭 시점에만 활성화
         function initAudio() {
             if (audioInitialized) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -50,7 +67,7 @@
             audioInitialized = true;
         }
 
-        // --- 비주얼 엔진 (K70 고딕 볼드 + 초밀착 자간) ---
+        // --- PIXI 비주얼 엔진 (이미지 1.png 스타일 재현) ---
         const app = new PIXI.Application({ backgroundColor: 0x000000, antialias: true, resizeTo: window });
         document.getElementById('art-section').appendChild(app.view);
 
@@ -59,9 +76,9 @@
             fontSize: window.innerWidth < 768 ? 140 : 260,
             fontWeight: '900',
             fill: '#ffffff',
-            letterSpacing: -25, // 자간을 더 줄여 덩어리감 강조
+            letterSpacing: -25, // K70 덩어리감 강조
             dropShadow: true,
-            dropShadowBlur: 25, // 번짐 효과 극대화
+            dropShadowBlur: 25,
             dropShadowColor: '#ffffff',
             dropShadowDistance: 0,
             dropShadowAlpha: 0.5
@@ -73,12 +90,10 @@
         k70Text.y = app.screen.height / 2;
         app.stage.addChild(k70Text);
 
-        // 왜곡 필터 설정
         const displaceSprite = PIXI.Sprite.from('https://pixijs.com/assets/pixi-filters/displacement_map_repeat.jpg');
         displaceSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
         const displaceFilter = new PIXI.filters.DisplacementFilter(displaceSprite);
         const blurFilter = new PIXI.filters.BlurFilter();
-        blurFilter.blur = 4;
         const noiseFilter = new PIXI.filters.NoiseFilter(0.3);
 
         k70Text.filters = [displaceFilter, blurFilter, noiseFilter];
@@ -88,16 +103,16 @@
             displaceSprite.x += 3 * delta;
             displaceSprite.y += 1.5 * delta;
 
-            // 속도에 따른 유기적 변형
+            // K70 흘러내리는 왜곡 효과
             displaceFilter.scale.x = 30 + (speed * 0.5);
-            displaceFilter.scale.y = 70 + (speed * 1.0); // 세로로 더 심하게 일렁임
+            displaceFilter.scale.y = 80 + (speed * 1.2); 
 
             blurFilter.blur = 3 + (speed * 0.12);
             noiseFilter.seed = Math.random();
             speed *= 0.94;
         });
 
-        // --- 셔플 및 초기화 ---
+        // --- 데이터 셔플 엔진 ---
         function runShuffle(id, delay) {
             const el = document.getElementById(id);
             const list = groups[id];
@@ -115,16 +130,8 @@
 
         const autoShuffle = () => Object.keys(groups).forEach((id, i) => runShuffle(id, i * 150));
 
+        // 로드 즉시 실행
         window.onload = () => {
             autoShuffle();
             setInterval(autoShuffle, 5000);
         };
-
-        window.addEventListener('mousedown', initAudio, { once: true });
-        window.addEventListener('mousemove', (e) => {
-            speed += Math.sqrt((e.clientX-lastX)**2 + (e.clientY-lastY)**2) * 0.2;
-            lastX = e.clientX; lastY = e.clientY;
-        });
-    </script>
-</body>
-</html>
