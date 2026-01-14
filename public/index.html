@@ -90,49 +90,64 @@
             o.start(); o.stop(audioCtx.currentTime + d);
         }
 
-        // --- 2. 비주얼 엔진 (1.png 스타일 재현) ---
-        const app = new PIXI.Application({ backgroundColor: 0x000000, antialias: true, resizeTo: window });
-        document.getElementById('art-section').appendChild(app.view);
+       // --- 비주얼 엔진 수정 부분 ---
+const app = new PIXI.Application({ backgroundColor: 0x000000, antialias: true, resizeTo: window });
+document.getElementById('art-section').appendChild(app.view);
 
-        // K-70 텍스트 스타일링
-        const textStyle = new PIXI.TextStyle({
-            fontFamily: 'serif',
-            fontSize: window.innerWidth < 768 ? 80 : 160,
-            fontWeight: 'bold',
-            fill: '#ffffff',
-            fontStyle: 'italic',
-            letterSpacing: -2
-        });
-        const k70Text = new PIXI.Text('K-70', textStyle);
-        k70Text.anchor.set(0.5);
-        k70Text.x = app.screen.width / 2;
-        k70Text.y = app.screen.height / 2;
-        app.stage.addChild(k70Text);
+// 1. 더 크고 두꺼운 폰트 설정 (원본의 묵직한 느낌)
+const textStyle = new PIXI.TextStyle({
+    fontFamily: 'serif',
+    fontSize: window.innerWidth < 768 ? 100 : 200,
+    fontWeight: '900',
+    fill: '#ffffff',
+    fontStyle: 'italic',
+    letterSpacing: -8,
+    // 그림자 효과를 이용해 글자 주변이 번지는 느낌(Glow) 추가
+    dropShadow: true,
+    dropShadowBlur: 15,
+    dropShadowColor: '#ffffff',
+    dropShadowDistance: 0
+});
 
-        // 1.png 특유의 왜곡 필터 설정
-        const displaceSprite = PIXI.Sprite.from('https://pixijs.com/assets/pixi-filters/displacement_map_repeat.jpg');
-        displaceSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-        const displaceFilter = new PIXI.filters.DisplacementFilter(displaceSprite);
-        const noiseFilter = new PIXI.filters.NoiseFilter(0.2);
-        k70Text.filters = [displaceFilter, noiseFilter];
-        app.stage.addChild(displaceSprite);
+const k70Text = new PIXI.Text('K-70', textStyle);
+k70Text.anchor.set(0.5);
+k70Text.x = app.screen.width / 2;
+k70Text.y = app.screen.height / 2;
+app.stage.addChild(k70Text);
 
-        app.ticker.add((delta) => {
-            if (!isStarted) return;
-            const t = app.ticker.lastTime / 1000;
-            
-            // 유기적 일렁임 애니메이션
-            displaceSprite.x += 1.5 * delta;
-            displaceSprite.y += 0.8 * delta;
-            
-            // 마우스/터치 속도에 따른 왜곡 강도 반응
-            const targetScale = 20 + (speed * 0.5);
-            displaceFilter.scale.x = targetScale;
-            displaceFilter.scale.y = targetScale;
+// 2. 여러 층의 필터를 중첩하여 '번짐'과 '왜곡' 구현
+const displaceSprite = PIXI.Sprite.from('https://pixijs.com/assets/pixi-filters/displacement_map_repeat.jpg');
+displaceSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+const displaceFilter = new PIXI.filters.DisplacementFilter(displaceSprite);
 
-            noiseFilter.seed = Math.random();
-            speed *= 0.92;
-        });
+const blurFilter = new PIXI.filters.BlurFilter();
+blurFilter.blur = 2; // 기본적으로 약간 번져 있게 설정
+
+const noiseFilter = new PIXI.filters.NoiseFilter(0.3); // 거친 입자감
+
+// 필터 적용 순서: 왜곡 -> 번짐 -> 노이즈
+k70Text.filters = [displaceFilter, blurFilter, noiseFilter];
+app.stage.addChild(displaceSprite);
+
+app.ticker.add((delta) => {
+    if (!isStarted) return;
+    const t = app.ticker.lastTime / 1000;
+    
+    // 3. 왜곡 맵의 움직임을 더 불규칙하게 변경
+    displaceSprite.x += 2.5 * delta; 
+    displaceSprite.y += Math.sin(t) * 2;
+
+    // 움직임(speed)에 따라 글자가 더 심하게 뭉개지도록 설정
+    const distortionStrength = 30 + (speed * 0.8);
+    displaceFilter.scale.x = distortionStrength;
+    displaceFilter.scale.y = distortionStrength * 1.5; // 세로로 더 길게 늘어남
+
+    // 속도가 빠를수록 글자가 더 흐릿해짐
+    blurFilter.blur = 1 + (speed * 0.1);
+    
+    noiseFilter.seed = Math.random();
+    speed *= 0.92;
+});
 
         // --- 3. 데이터 셔플 로직 ---
         function runShuffle(id, delay) {
