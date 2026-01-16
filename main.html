@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Perfect Shape - Apex Sound</title>
+    <title>The Perfect Shape - Volume Control</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
@@ -38,7 +38,7 @@
 <body>
     <div id="message-ui">
         <h1>"가장 완벽한 도형 안에 갇힌 것을 환영합니다."</h1>
-        <p>화면을 클릭하면 공간의 소리가 깨어납니다.</p>
+        <p id="sub-msg">화면을 클릭하면 공간의 소리가 깨어납니다.</p>
     </div>
 
     <div id="data-stream">
@@ -50,63 +50,55 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        // --- [1] Web Audio API: 3개 음 기반 우주적 로우파이 사운드 ---
+        // --- [1] Web Audio API 사운드 설정 ---
         let audioCtx;
         function initSound() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 3개의 낮은 주파수 (우주적 베이스 톤)
-            const frequencies = [55, 82.4, 110]; // A1, E2, A2 (완전 5도 중심의 안정적 음색)
+            const frequencies = [55, 82.4, 110]; 
             
             frequencies.forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                const lfo = audioCtx.createOscillator(); // 볼륨에 변화를 줄 저주파 발진기
+                const lfo = audioCtx.createOscillator();
                 const lfoGain = audioCtx.createGain();
-
-                osc.type = i === 1 ? 'triangle' : 'sine'; // 부드러운 음색 섞기
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
-                // 로우패스 필터로 먹먹한(Lo-Fi) 느낌 추가
                 const filter = audioCtx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.value = 200 + (i * 100);
 
+                osc.type = i === 1 ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                filter.type = 'lowpass';
+                filter.frequency.value = 150 + (i * 100);
+                
+                // 초기 볼륨은 0으로 시작
                 gain.gain.value = 0;
                 
-                // 유기적인 볼륨 변화 (호흡하듯)
                 lfo.frequency.value = 0.1 + (i * 0.05);
-                lfoGain.gain.value = 0.05; 
+                lfoGain.gain.value = 0.04; 
                 
                 lfo.connect(lfoGain);
                 lfoGain.connect(gain.gain);
-                
                 osc.connect(filter);
                 filter.connect(gain);
                 gain.connect(audioCtx.destination);
 
                 osc.start();
                 lfo.start();
-                
-                // 서서히 페이드 인
-                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 2);
+
+                // [중요: 볼륨 조절] 
+                // 아래 0.08 숫자를 높이면 소리가 커지고, 낮추면 작아집니다. (0.0 ~ 1.0 권장)
+                gain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 3);
             });
-            document.querySelector('#message-ui p').innerText = "그저 바라보기만 하십시오.";
+            document.getElementById('sub-msg').innerText = "그저 바라보기만 하십시오.";
         }
 
-        window.addEventListener('mousedown', () => {
-            initSound();
-            isDragging = true;
-        });
-
-        // --- [2] 기존 비주얼 엔진 ---
+        // --- [2] 비주얼 엔진 및 인터랙션 ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         let width, height, baseSize, time = 0;
         let cameraZ = 1800, targetCameraZ = 1800;
         let rotY = 0, targetRotY = 0, rotX = 0, targetRotX = 0;
-        let lastMouseX, lastMouseY;
+        let isDragging = false, lastMouseX = 0, lastMouseY = 0;
+        
         let vertices = [], edges = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
         const particles = [], particleCount = 450;
         const glowCanvas = document.createElement('canvas');
@@ -144,15 +136,26 @@
             preRenderGlow();
         }
 
-        window.addEventListener('wheel', e => { targetCameraZ = Math.max(-500, Math.min(targetCameraZ + e.deltaY * 1.5, 15000)); }, { passive: true });
+        window.addEventListener('mousedown', e => {
+            initSound();
+            isDragging = true;
+            lastMouseX = e.clientX; 
+            lastMouseY = e.clientY;
+        });
+
         window.addEventListener('mousemove', e => {
             if (!isDragging) return;
             targetRotY += (e.clientX - lastMouseX) * 0.005;
             targetRotX += (e.clientY - lastMouseY) * 0.005;
             targetRotX = Math.max(-0.8, Math.min(0.8, targetRotX));
-            lastMouseX = e.clientX; lastMouseY = e.clientY;
+            lastMouseX = e.clientX; 
+            lastMouseY = e.clientY;
         });
+
         window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('wheel', e => { 
+            targetCameraZ = Math.max(-500, Math.min(targetCameraZ + e.deltaY * 1.5, 15000)); 
+        }, { passive: true });
         window.addEventListener('resize', resize);
         resize();
 
@@ -165,7 +168,8 @@
 
         function project(v) {
             cameraZ += (targetCameraZ - cameraZ) * 0.05;
-            rotY += (targetRotY - rotY) * 0.02; rotX += (targetRotX - rotX) * 0.02;
+            rotY += (targetRotY - rotY) * 0.02; 
+            rotX += (targetRotX - rotX) * 0.02;
             const perspective = 1200;
             const scale = perspective / (perspective + v.z + cameraZ);
             return { x: v.x * scale + width * 0.5, y: v.y * scale + height * 0.5, scale: scale };
@@ -173,16 +177,15 @@
 
         const deltaEl = document.getElementById('delta-val');
         const varEl = document.getElementById('var-val');
-        const coordEl = document.getElementById('freq-val');
+        const freqEl = document.getElementById('freq-val');
 
         function draw() {
             time += 0.003; 
             const breath = 1 + Math.sin(time * 2.5) * 0.15;
             
-            // UI 업데이트
             deltaEl.innerText = (Math.random() * 0.004).toFixed(4);
             varEl.innerText = (breath).toFixed(4);
-            coordEl.innerText = breath > 1 ? "STABLE" : "DEEP";
+            freqEl.innerText = breath > 1 ? "HIGH" : "LOW";
 
             ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
             const currentRotX = rotX + Math.sin(time * 0.3) * 0.1;
