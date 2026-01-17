@@ -3,33 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Perfect Shape - Sharp & Clean</title>
+    <title>The Perfect Shape - Original Text Integrated</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; cursor: grab; font-family: 'Pretendard', sans-serif; touch-action: none; }
-        canvas { position: fixed; top: 0; left: 0; filter: contrast(120%) brightness(105%); }
+        canvas { position: fixed; top: 0; left: 0; filter: contrast(130%) brightness(110%); }
         #message-ui {
-            position: fixed; bottom: 8%; left: 50%; transform: translateX(-50%);
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: #fff; text-align: center; pointer-events: none; z-index: 10;
-            letter-spacing: -0.02em; width: 100%; opacity: 0.7;
+            letter-spacing: -0.02em; width: 100%; opacity: 0.8;
+            animation: text-resonance 4s infinite ease-in-out;
         }
-        #message-ui h1 { font-size: clamp(14px, 3vw, 20px); font-weight: 700; margin-bottom: 5px; }
-        #message-ui p { font-size: 11px; opacity: 0.4; font-weight: 300; }
+        #message-ui h1 { font-size: clamp(18px, 2.5vw, 28px); margin: 0 0 10px 0; font-weight: 800; }
+        #message-ui p { font-size: clamp(13px, 1.2vw, 16px); margin: 0; opacity: 0.5; font-weight: 300; }
+        @keyframes text-resonance {
+            0%, 100% { opacity: 0.6; text-shadow: 0 0 10px rgba(255, 255, 255, 0.1); }
+            50% { opacity: 1; text-shadow: 0 0 30px rgba(255, 255, 255, 0.4); }
+        }
         #data-stream {
-            position: fixed; top: 25px; left: 25px; font-family: 'Courier New', monospace; 
-            font-size: 9px; color: rgba(255, 255, 255, 0.15); text-align: left;
+            position: fixed; top: 50px; right: 50px; font-family: 'Courier New', monospace; 
+            font-size: 11px; color: rgba(255, 255, 255, 0.25); text-align: right; z-index: 10;
         }
+        .data-row { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 6px; }
+        .data-value { color: rgba(255, 255, 255, 0.45); width: 80px; text-align: left; }
     </style>
 </head>
 <body>
     <div id="message-ui">
-        <h1>"빛을 걷어내고 본질에 집중합니다."</h1>
-        <p id="sub-msg">화면을 터치하여 공간을 깨우십시오.</p>
+        <h1>"가장 완벽한 도형 안에 갇힌 것을 환영합니다."</h1>
+        <p id="sub-msg">화면을 클릭(터치)하면 공간의 소리가 깨어납니다.</p>
     </div>
+
     <div id="data-stream">
-        <div>SYNC_DLT <span id="delta-val" style="color:rgba(255,255,255,0.4)">0.0000</span></div>
-        <div>VAR_IDX <span id="var-val" style="color:rgba(255,255,255,0.4)">1.0000</span></div>
+        <div class="data-row"><span>SYNC_DELTA</span> <span id="delta-val" class="data-value">0.0000</span></div>
+        <div class="data-row"><span>VAR_INDEX</span> <span id="var-val" class="data-value">1.0000</span></div>
+        <div class="data-row"><span>AUDIO_FRQ</span> <span id="freq-val" class="data-value">LOW</span></div>
     </div>
+
     <canvas id="canvas"></canvas>
 
     <script>
@@ -37,15 +47,21 @@
         function initSound() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            [55, 82.4].forEach((freq) => {
+            const frequencies = [55, 82.4, 110]; 
+            frequencies.forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.frequency.value = freq;
+                const filter = audioCtx.createBiquadFilter();
+                osc.type = i === 1 ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                filter.type = 'lowpass';
+                filter.frequency.value = 150 + (i * 100);
                 gain.gain.value = 0;
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 3);
+                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 3);
             });
-            document.getElementById('sub-msg').innerText = "공간의 소리가 정렬되었습니다.";
+            document.getElementById('sub-msg').innerText = "그저 바라보기만 하십시오.";
         }
 
         const canvas = document.getElementById('canvas');
@@ -53,8 +69,8 @@
         let width, height, baseSize, time = 0;
         const isMobile = window.innerWidth < 768;
 
-        // 카메라 거리를 멀리하여 광원이 뭉치는 현상 방지
-        let cameraZ = isMobile ? 5000 : 1800;
+        // 모바일에서 오브제를 웅장하게 키우기 위한 설정
+        let cameraZ = isMobile ? 2200 : 1800; 
         let targetCameraZ = cameraZ;
         let rotY = 0, targetRotY = 0, rotX = 0, targetRotX = 0;
         let isDragging = false, lastX = 0, lastY = 0;
@@ -65,25 +81,25 @@
         const gCtx = glowCanvas.getContext('2d');
 
         function preRenderGlow() {
-            const size = 600; // 광원 캔버스 사이즈 축소 (더 선명하게)
+            const size = 600;
             glowCanvas.width = size; glowCanvas.height = size;
             const grad = gCtx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 0.8)'); // 중심 밝기 낮춤
-            grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.15)');
-            grad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.7)'); 
+            grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.12)');
+            grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
             gCtx.fillStyle = grad; gCtx.fillRect(0, 0, size, size);
         }
 
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            const currentRatio = isMobile ? 1.8 : 7;
+            const currentRatio = isMobile ? 3.5 : 7;
             baseSize = Math.max(width, height) * currentRatio;
             const s = baseSize * 0.8;
             vertices = [{x: 0, y: -s, z: 0}, {x: s * Math.sqrt(8/9), y: s/3, z: 0}, {x: -s * Math.sqrt(2/9), y: s/3, z: s * Math.sqrt(2/3)}, {x: -s * Math.sqrt(2/9), y: s/3, z: -s * Math.sqrt(2/3)}];
             particles.length = 0;
-            for(let i=0; i<(isMobile?150:400); i++) {
-                particles.push({x:(Math.random()-0.5)*baseSize*4, y:(Math.random()-0.5)*baseSize*4, z:(Math.random()-0.5)*baseSize*4, size:Math.random()*1.2});
+            for(let i=0; i<(isMobile?200:450); i++) {
+                particles.push({x:(Math.random()-0.5)*baseSize*5, y:(Math.random()-0.5)*baseSize*5, z:(Math.random()-0.5)*baseSize*5, size:Math.random()*1.5});
             }
             preRenderGlow();
         }
@@ -111,13 +127,16 @@
 
         function draw() {
             time += 0.003;
-            const breath = 1 + Math.sin(time * 2.5) * 0.1;
-            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+            const breath = 1 + Math.sin(time * 2.5) * 0.12;
+            document.getElementById('delta-val').innerText = (Math.random() * 0.004).toFixed(4);
+            document.getElementById('var-val').innerText = (breath).toFixed(4);
+            document.getElementById('freq-val').innerText = breath > 1 ? "HIGH" : "LOW";
 
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
             particles.forEach(p => {
                 const proj = project(p);
                 if (proj.scale > 0) {
-                    ctx.globalAlpha = Math.min(0.4, proj.scale * 1.5);
+                    ctx.globalAlpha = Math.min(0.5, proj.scale * 2);
                     ctx.fillStyle = "white";
                     ctx.beginPath(); ctx.arc(proj.x, proj.y, p.size * proj.scale, 0, 7); ctx.fill();
                 }
@@ -128,18 +147,17 @@
             edges.forEach(edge => {
                 const p1 = proj[edge[0]], p2 = proj[edge[1]];
                 const dist = Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2);
-                const steps = Math.min(dist / 1.5, 120); // 광원 스텝 수 감소 (더 깨끗하게)
-                
+                const steps = Math.min(dist / 1.2, 150); 
                 for (let i = 0; i <= steps; i++) {
                     const ratio = i / steps;
                     const x = p1.x + (p2.x - p1.x) * ratio;
                     const y = p1.y + (p2.y - p1.y) * ratio;
-                    const s = (isMobile?600:1000) * ((p1.scale + p2.scale)/2) * breath; // 광원 크기 대폭 축소
+                    const s = (isMobile?850:1100) * ((p1.scale + p2.scale)/2) * breath;
                     ctx.drawImage(glowCanvas, x - s/2, y - s/2, s, s);
                 }
                 ctx.beginPath();
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * breath})`; // 선 투명도 조절
-                ctx.lineWidth = 0.8; 
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 * breath})`;
+                ctx.lineWidth = 1.0; 
                 ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
             });
             ctx.globalCompositeOperation = 'source-over';
