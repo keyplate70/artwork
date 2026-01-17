@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Perfect Shape - Original Text Integrated</title>
+    <title>The Perfect Shape - Responsive Integrated</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; cursor: grab; font-family: 'Pretendard', sans-serif; touch-action: none; }
         canvas { position: fixed; top: 0; left: 0; filter: contrast(130%) brightness(110%); }
+        
+        /* 오리지널 문구 UI */
         #message-ui {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: #fff; text-align: center; pointer-events: none; z-index: 10;
@@ -16,16 +18,23 @@
         }
         #message-ui h1 { font-size: clamp(18px, 2.5vw, 28px); margin: 0 0 10px 0; font-weight: 800; }
         #message-ui p { font-size: clamp(13px, 1.2vw, 16px); margin: 0; opacity: 0.5; font-weight: 300; }
+        
         @keyframes text-resonance {
             0%, 100% { opacity: 0.6; text-shadow: 0 0 10px rgba(255, 255, 255, 0.1); }
             50% { opacity: 1; text-shadow: 0 0 30px rgba(255, 255, 255, 0.4); }
         }
+
         #data-stream {
             position: fixed; top: 50px; right: 50px; font-family: 'Courier New', monospace; 
             font-size: 11px; color: rgba(255, 255, 255, 0.25); text-align: right; z-index: 10;
         }
         .data-row { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 6px; }
         .data-value { color: rgba(255, 255, 255, 0.45); width: 80px; text-align: left; }
+        
+        /* 모바일용 레이아웃 미세조정 */
+        @media (max-width: 768px) {
+            #data-stream { top: 30px; right: 30px; font-size: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -43,6 +52,7 @@
     <canvas id="canvas"></canvas>
 
     <script>
+        // --- [1] 사운드 엔진 ---
         let audioCtx;
         function initSound() {
             if (audioCtx) return;
@@ -64,15 +74,13 @@
             document.getElementById('sub-msg').innerText = "그저 바라보기만 하십시오.";
         }
 
+        // --- [2] 비주얼 엔진 ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         let width, height, baseSize, time = 0;
-        const isMobile = window.innerWidth < 768;
-
-        // 모바일에서 오브제를 웅장하게 키우기 위한 설정
-        let cameraZ = isMobile ? 2200 : 1800; 
-        let targetCameraZ = cameraZ;
-        let rotY = 0, targetRotY = 0, rotX = 0, targetRotX = 0;
+        
+        const getIsMobile = () => window.innerWidth < 768;
+        let cameraZ, targetCameraZ, rotY = 0, targetRotY = 0, rotX = 0, targetRotX = 0;
         let isDragging = false, lastX = 0, lastY = 0;
 
         let vertices = [], edges = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
@@ -84,7 +92,9 @@
             const size = 600;
             glowCanvas.width = size; glowCanvas.height = size;
             const grad = gCtx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 0.7)'); 
+            // 모바일 환경일 때 광원의 밀도를 더 압축하여 선명하게 표현
+            const glowOpacity = getIsMobile() ? 0.6 : 0.8;
+            grad.addColorStop(0, `rgba(255, 255, 255, ${glowOpacity})`); 
             grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.12)');
             grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
             gCtx.fillStyle = grad; gCtx.fillRect(0, 0, size, size);
@@ -93,12 +103,20 @@
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            const currentRatio = isMobile ? 3.5 : 7;
+            const isMobile = getIsMobile();
+            
+            // 환경별 사이즈 비율 분기 (모바일 웅장하게, 웹 시원하게)
+            const currentRatio = isMobile ? 3.8 : 7;
+            cameraZ = isMobile ? 2400 : 1800;
+            targetCameraZ = cameraZ;
+            
             baseSize = Math.max(width, height) * currentRatio;
             const s = baseSize * 0.8;
             vertices = [{x: 0, y: -s, z: 0}, {x: s * Math.sqrt(8/9), y: s/3, z: 0}, {x: -s * Math.sqrt(2/9), y: s/3, z: s * Math.sqrt(2/3)}, {x: -s * Math.sqrt(2/9), y: s/3, z: -s * Math.sqrt(2/3)}];
+            
             particles.length = 0;
-            for(let i=0; i<(isMobile?200:450); i++) {
+            const pCount = isMobile ? 180 : 450;
+            for(let i=0; i<pCount; i++) {
                 particles.push({x:(Math.random()-0.5)*baseSize*5, y:(Math.random()-0.5)*baseSize*5, z:(Math.random()-0.5)*baseSize*5, size:Math.random()*1.5});
             }
             preRenderGlow();
@@ -107,9 +125,14 @@
         function handleStart(x, y) { initSound(); isDragging = true; lastX = x; lastY = y; }
         function handleMove(x, y) { if (!isDragging) return; targetRotY += (x - lastX) * 0.005; targetRotX += (y - lastY) * 0.005; lastX = x; lastY = y; }
 
+        window.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', () => isDragging = false);
         window.addEventListener('touchstart', e => { handleStart(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, { passive: false });
         window.addEventListener('touchmove', e => { handleMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
         window.addEventListener('touchend', () => isDragging = false);
+        window.addEventListener('wheel', e => { targetCameraZ = Math.max(500, Math.min(targetCameraZ + e.deltaY * 1.5, 15000)); }, { passive: true });
+        
         window.addEventListener('resize', resize);
         resize();
 
@@ -127,6 +150,7 @@
 
         function draw() {
             time += 0.003;
+            const isMobile = getIsMobile();
             const breath = 1 + Math.sin(time * 2.5) * 0.12;
             document.getElementById('delta-val').innerText = (Math.random() * 0.004).toFixed(4);
             document.getElementById('var-val').innerText = (breath).toFixed(4);
@@ -143,27 +167,3 @@
             });
 
             const proj = vertices.map(v => project(v));
-            ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter';
-            edges.forEach(edge => {
-                const p1 = proj[edge[0]], p2 = proj[edge[1]];
-                const dist = Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2);
-                const steps = Math.min(dist / 1.2, 150); 
-                for (let i = 0; i <= steps; i++) {
-                    const ratio = i / steps;
-                    const x = p1.x + (p2.x - p1.x) * ratio;
-                    const y = p1.y + (p2.y - p1.y) * ratio;
-                    const s = (isMobile?850:1100) * ((p1.scale + p2.scale)/2) * breath;
-                    ctx.drawImage(glowCanvas, x - s/2, y - s/2, s, s);
-                }
-                ctx.beginPath();
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 * breath})`;
-                ctx.lineWidth = 1.0; 
-                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-            });
-            ctx.globalCompositeOperation = 'source-over';
-            requestAnimationFrame(draw);
-        }
-        draw();
-    </script>
-</body>
-</html>
